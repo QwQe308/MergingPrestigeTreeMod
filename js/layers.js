@@ -7,6 +7,8 @@ function getHighestShit(layer) {
     case "g":
     case "scr":
       return new Decimal(1)
+    case "M":
+      return new Decimal(1)
   }
 }
 
@@ -25,6 +27,9 @@ function getMergeableCost(layer) {
     case "scr":
       cost = new Decimal(0)
       return cost
+    case "M":
+      cost = new Decimal(1)
+      return cost
   }
 }
 
@@ -41,12 +46,7 @@ function getAcquireResourceRate() {
 }
 
 function getTier(layer, id) {
-  switch(layer) {
-    case "p":
-    case "g":
-    case "scr":
      return new Decimal(getClickableState(layer, id))
-  }
 }
 
 function getMergeIncrease(layer) {
@@ -118,7 +118,7 @@ function clickAFuckingMergeable(layer, id) {
 }
 
 function getImprovedAutoMergeSpeed(layer) {
-  let speed = 10
+  let speed = 3.14
   speed = speed / (buyableEffect("t", 34).toNumber())
   switch(layer) {
     case "p":
@@ -176,7 +176,7 @@ addLayer("p", {
   },
   row: 0, // Row the layer is in on the tree (0 is the first row)
   hotkeys: [
-    { key: "p", description: "P: Reset for prestige points", onPress() { if (canReset(this.layer)) doReset(this.layer) } },
+    { key: "p", description: "P: Reset for work", onPress() { if (canReset(this.layer)) doReset(this.layer) } },
   ],
   passiveGeneration() {
     if (player.automation.p.autoWorkOn) {
@@ -1061,7 +1061,7 @@ addLayer("g", {
   baseResource: "Mergeable Score", // Name of resource prestige is based on
   baseAmount() { return player.sc.points }, // Get the current amount of baseResource
   type: "normal", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
-  exponent: 0.95, // Prestige currency exponent
+  exponent: 0.5, // Prestige currency exponent
   gainMult() { // Calculate the multiplier for main currency from bonuses
     mult = new Decimal(1)
     if (player.mm.unlocked) mult = mult.mul(layers.mm.gildMultiplier())
@@ -1069,10 +1069,10 @@ addLayer("g", {
     return mult
   },
   gainExp() { // Calculate the exponent on main currency from bonuses
-    return new Decimal(1)
+    return new Decimal(player.sc.points.log10().div(5))
   },
   passiveGeneration() {
-    if (player.automation.g.autoGildOn) {
+    if (player.automation.g.autoGildOn && hasMilestone("sc", 13)) {
       return 0.25
     } else {
       return 0
@@ -1085,7 +1085,7 @@ addLayer("g", {
   workMultiplier() {
     let boost = new Decimal(1)
     for (var i in player[this.layer].clickables) {
-      if (getTier(this.layer, i).gt(0)) boost = boost.mul(Decimal.pow(2, getTier(this.layer, i).sqrt()))
+      if (getTier(this.layer, i).gt(0)) boost = boost.mul(Decimal.pow(2, getTier(this.layer, i).pow(2)))
     }
     return boost
   },
@@ -1590,7 +1590,7 @@ addLayer("g", {
                     "h-line",
                     ["blank", "5px"],
                      "clickables",
-                    ["display-text", function() { if (player.mp.best.gt(0)) return "Your Gilded Mergeables are providing a "+format(layers.g.workMultiplier())+"x multiplier to work. (based on 2^(tier^0.5) for each Gilded Mergeable.) "}],
+                    ["display-text", function() { if (player.mp.best.gt(0)) return "Your Gilded Mergeables are providing a "+format(layers.g.workMultiplier())+"x multiplier to work. (based on 2^tier^2 for each Gilded Mergeable.) "}],
                     ["blank", "15px"],
                     ["display-text", function() { return "The next Gilded Mergeable costs "+format(getMergeableCost("g"))+" gilded points."}]],
             },
@@ -1619,7 +1619,7 @@ addLayer("mm", {
   },
   image:"aptmammastery1.png",
   color: "#62de87",
-  requires: new Decimal(2.5e12), // Can be a function that takes requirement increases into account
+  requires: new Decimal(1e12), // Can be a function that takes requirement increases into account
   resource: "merge levels", // Name of prestige currency
   baseResource: "Mergeable Score", // Name of resource prestige is based on
   baseAmount() { return player.sc.points }, // Get the current amount of baseResource
@@ -1645,7 +1645,7 @@ addLayer("mm", {
         player.mm.percentage = new Decimal(0)
         player.mm.points = player.mm.points.add(1)
       }
-      if (player.sc.points.gte(2.5e12)) {
+      if (player.sc.points.gte(1e12)) {
         player[this.layer].unlocked = true
       }
   },
@@ -1735,7 +1735,7 @@ addLayer("mp", {
   baseResource: "merge levels", // Name of resource prestige is based on
   baseAmount() { return player.mm.points }, // Get the current amount of baseResource
   type: "normal", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
-  exponent: 2.75, // Prestige currency exponent
+  exponent: 3, // Prestige currency exponent
   roundUpCost: true,
   gainMult() { // Calculate the multiplier for main currency from bonuses
     mult = new Decimal(1)
@@ -1766,14 +1766,14 @@ addLayer("mp", {
                     return cost.floor()
                 },
                 effect(x=player[this.layer].buyables[this.id]) { // Effects of owning x of the items, x is a decimal
-                    let eff = Decimal.pow(1.5, x)
+                    let eff = Decimal.pow(2, x)
                     return eff;
                 },
                 display() { // Everything else displayed in the buyable button after the title
                     let data = tmp[this.layer].buyables[this.id]
                     return "Cost: " + format(data.cost) + " merge tokens\n\
                     Level: " + formatWhole(player[this.layer].buyables[this.id]) + "/"+ formatWhole(tmp[this.layer].buyables[this.id].cap) + "\n\
-                    Multiplies Gilded Point gain by "+ format(data.effect)+"x. (Basic effect 1.5x.)"
+                    Multiplies Gilded Point gain by "+ format(data.effect)+"x. (Basic effect 2x.)"
                 },
                 unlocked() { return hasMilestone("sc", 0) }, 
                 cap() {
@@ -1803,14 +1803,14 @@ addLayer("mp", {
                     return cost.floor()
                 },
                 effect(x=player[this.layer].buyables[this.id]) { // Effects of owning x of the items, x is a decimal
-                    let eff = Decimal.mul(0.1, x).add(1)
+                    let eff = Decimal.mul(0.2, x).add(1)
                     return eff;
                 },
                 display() { // Everything else displayed in the buyable button after the title
                     let data = tmp[this.layer].buyables[this.id]
                     return "Cost: " + format(data.cost) + " merge tokens\n\
                     Level: " + formatWhole(player[this.layer].buyables[this.id]) + "/"+ formatWhole(tmp[this.layer].buyables[this.id].cap) + "\n\
-                    Multiplies Auto-Merge speed by "+ format(data.effect)+"x. (+0.1x speed additively)"
+                    Multiplies Auto-Merge speed by "+ format(data.effect)+"x. (+0.2x speed additively)"
                 },
                 unlocked() { return hasMilestone("sc", 0) }, 
                 cap() {
@@ -1840,14 +1840,14 @@ addLayer("mp", {
                     return cost.floor()
                 },
                 effect(x=player[this.layer].buyables[this.id]) { // Effects of owning x of the items, x is a decimal
-                    let eff = Decimal.pow(10, x)
+                    let eff = Decimal.pow(100, x)
                     return eff;
                 },
                 display() { // Everything else displayed in the buyable button after the title
                     let data = tmp[this.layer].buyables[this.id]
                     return "Cost: " + format(data.cost) + " merge tokens\n\
                     Level: " + formatWhole(player[this.layer].buyables[this.id]) + "/"+ formatWhole(tmp[this.layer].buyables[this.id].cap) + "\n\
-                    Multiplies Point gain by "+ format(data.effect)+"x. (Basic effect 10x.)"
+                    Multiplies Point gain by "+ format(data.effect)+"x. (Basic effect 100x.)"
                 },
                 unlocked() { return hasMilestone("sc", 0) }, 
                 cap() {
@@ -1913,14 +1913,14 @@ addLayer("mp", {
                     return cost.floor()
                 },
                 effect(x=player[this.layer].buyables[this.id]) { // Effects of owning x of the items, x is a decimal
-                    let eff = Decimal.pow(2, x)
+                    let eff = Decimal.pow(5, x)
                     return eff;
                 },
                 display() { // Everything else displayed in the buyable button after the title
                     let data = tmp[this.layer].buyables[this.id]
                     return "Cost: " + format(data.cost) + " merge tokens\n\
                     Level: " + formatWhole(player[this.layer].buyables[this.id]) + "/"+ formatWhole(tmp[this.layer].buyables[this.id].cap) + "\n\
-                    Multiplies Work gain by "+ format(data.effect)+"x. (Basic effect 2x.)"
+                    Multiplies Work gain by "+ format(data.effect)+"x. (Basic effect 5x.)"
                 },
                 unlocked() { return hasMilestone("sc", 0) }, 
                 cap() {
@@ -1950,14 +1950,14 @@ addLayer("mp", {
                     return cost.floor()
                 },
                 effect(x=player[this.layer].buyables[this.id]) { // Effects of owning x of the items, x is a decimal
-                    let eff = Decimal.pow(3, x)
+                    let eff = Decimal.pow(10, x)
                     return eff;
                 },
                 display() { // Everything else displayed in the buyable button after the title
                     let data = tmp[this.layer].buyables[this.id]
                     return "Cost: " + format(data.cost) + " merge tokens\n\
                     Level: " + formatWhole(player[this.layer].buyables[this.id]) + "/"+ formatWhole(tmp[this.layer].buyables[this.id].cap) + "\n\
-                    Gilded Mergeables are "+ format(data.effect)+"x cheaper. (Base effect 3x.)"
+                    Gilded Mergeables are "+ format(data.effect)+"x cheaper. (Base effect 10x.)"
                 },
                 unlocked() { return hasMilestone("sc", 0) }, 
                 cap() {
@@ -1987,14 +1987,14 @@ addLayer("mp", {
                     return cost.floor()
                 },
                 effect(x=player[this.layer].buyables[this.id]) { // Effects of owning x of the items, x is a decimal
-                    let eff = Decimal.pow(1.5, x)
+                    let eff = Decimal.pow(1.14514, x)
                     return eff;
                 },
                 display() { // Everything else displayed in the buyable button after the title
                     let data = tmp[this.layer].buyables[this.id]
                     return "Cost: " + format(data.cost) + " merge tokens\n\
                     Level: " + formatWhole(player[this.layer].buyables[this.id]) + "/"+ formatWhole(tmp[this.layer].buyables[this.id].cap) + "\n\
-                    Multiplies Merge Token gain by "+ format(data.effect)+"x. (Base effect 1.5x)"
+                    Multiplies Merge Token gain by "+ format(data.effect)+"x. (Base effect 1.14514x)"
                 },
                 unlocked() { return hasMilestone("sc", 0) }, 
                 cap() {
@@ -2066,7 +2066,7 @@ addLayer("tu", {
                 },
                 effect(x=player[this.layer].buyables[this.id]) { // Effects of owning x of the items, x is a decimal
                     let eff = x
-                    eff = Decimal.pow(0.9, eff).recip()
+                    eff = Decimal.pow(0.85, eff).recip()
                     return eff.sub(1);
                 },
                 display() { // Everything else displayed in the buyable button after the title
@@ -2123,7 +2123,7 @@ addLayer("t", {
   baseAmount() { return player.sc.points }, // Get the current amount of baseResource
   resource: "grimoires", // Name of prestige currency
   type: "none", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
-  exponent: 2.75, // Prestige currency exponent
+  exponent: 3, // Prestige currency exponent
   roundUpCost: true,
   row: 2, // Row the layer is in on the tree (0 is the first row)
     clickables: {
@@ -2133,15 +2133,15 @@ addLayer("t", {
             title: "Summon a Treasure", // Optional, displayed at the top in a larger font
             display() { // Everything else displayed in the buyable button after the title
                 let data = getTier(this.layer, this.id)
-                return "Requires 5 grimoires"
+                return "Requires 3 grimoires"
             },
             unlocked() { return player[this.layer].unlocked }, 
             canClick() {
-                return player[this.layer].points.gte(5)
+                return player[this.layer].points.gte(3)
                 },
             onClick() { 
-                if (!player[this.layer].points.gte(5)) return
-                player[this.layer].points = player[this.layer].points.sub(5)
+                if (!player[this.layer].points.gte(3)) return
+                player[this.layer].points = player[this.layer].points.sub(3)
                 let luck = irandom(100)
                 let cat = []
                 let normal = [11, 12, 13, 21, 22, 24, 32]
@@ -2149,12 +2149,12 @@ addLayer("t", {
                 if (hasMilestone("sc", 11)) rare = [23, 14, 31, 33]
                 let mythic = [34]
                 let typing = ""
-                if (luck < 80) {
+                if (luck < 60) {
                   type = "normal"
                   for (i in normal) {
                     cat.push(normal[i])
                   }
-                } else if (luck < 99.1) {
+                } else if (luck < 90) {
                   type = "rare"
                   for (i in rare) {
                     cat.push(rare[i])
@@ -2170,11 +2170,11 @@ addLayer("t", {
                   player[this.layer].bonusLevels[chosen] = player[this.layer].bonusLevels[chosen].add(1)
                 } else {
                   if (type == "normal") {
-                    addPoints("scr", 5)
+                    addPoints("scr", 10)
                   } else if (type == "rare") {
-                    addPoints("scr", 25)
+                    addPoints("scr", 100)
                   } else {
-                    addPoints("scr", 500)
+                    addPoints("scr", 1000)
                   }
                 }
                 player.t.lastTreasureRolled = chosen
@@ -2876,7 +2876,7 @@ addLayer("scr", {
   baseResource: "Mergeable Score", // Name of resource prestige is based on
   baseAmount() { return player.sc.points }, // Get the current amount of baseResource
   type: "none", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
-  exponent: 0.95, // Prestige currency exponent
+  exponent: 1, // Prestige currency exponent
   gainMult() { // Calculate the multiplier for main currency from bonuses
     mult = new Decimal(1)
     return mult
@@ -2886,8 +2886,8 @@ addLayer("scr", {
   },
   row: 2, // Row the layer is in on the tree (0 is the first row)
   mergeableRate() {
-    let c = 60
-    c -= (buyableEffect("scr", 22).toNumber())
+    let c = 10
+    c /= (buyableEffect("scr", 22).toNumber())
     return c
   },
   update(diff) {
@@ -3315,7 +3315,7 @@ addLayer("scr", {
                     return cost.floor()
                 },
                 effect(x=player[this.layer].buyables[this.id]) { // Effects of owning x of the items, x is a decimal
-                    let eff = x.mul(2)
+                    let eff = Decimal.pow(1.14514, x)
                     return eff;
                 },
                 unlocked() {
@@ -3325,7 +3325,7 @@ addLayer("scr", {
                     let data = tmp[this.layer].buyables[this.id]
                     return "Cost: " + format(data.cost) + " scrap\n\
                     Level: " + formatWhole(player[this.layer].buyables[this.id]) + "/"+ formatWhole(29) + "\n\
-                    Scrap Mergeables spawn "+ formatTime(data.effect)+" faster."
+                    Scrap Mergeables spawn x"+ formatTime(data.effect)+" faster."
                 },
                 canAfford() {
                     return player[this.layer].points.gte(tmp[this.layer].buyables[this.id].cost) && player[this.layer].buyables[this.id].lte(28)},
@@ -3411,6 +3411,7 @@ addLayer("sc", {
               player[this.layer].points = player[this.layer].points.add(Decimal.pow(3, getTier("p", i)))
             }
           }
+          player[this.layer].points = player[this.layer].points.mul(getMergeablesTotalPower("M")).mul(2)
         	player[this.layer].best = player[this.layer].best.max(player[this.layer].points)
         },
         milestones: {
@@ -3505,12 +3506,19 @@ addLayer("sc", {
                 toggles: [
                     ["automation", "g", "autoGildOn"]],
             },
-            14: {requirementDescription: "5e15 Mergeable Score",
+            14: {requirementDescription: "1e17 Mergeable Score",
                 unlocked() {return hasMilestone(this.layer, 9)},
-                done() {return player[this.layer].best.gte(5e15)}, // Used to determine when to give the milestone
-                effectDescription: "Unlock Powers.",
+                done() {return player[this.layer].best.gte(1e18)}, // Used to determine when to give the milestone
+                effectDescription: "Unlock METANESS.",
             },
         },
-        layerShown() { return player[this.layer].best.gt(0) }
+        layerShown() { return player[this.layer].best.gt(0) },
+        doReset(resetlayer){
+          if(layers[resetlayer].row>=3){
+            layerDataReset("sc", [])
+            layerDataReset("p", [])
+            layerDataReset("g", [])
+          }
+        }
     }, 
 )
